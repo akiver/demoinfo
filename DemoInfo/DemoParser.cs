@@ -225,8 +225,13 @@ namespace DemoInfo
 		/// </summary>
 		public event EventHandler<SayText2EventArgs> SayText2;
 
+		/// <summary>
+		/// Occurs when players ranks are displayed (at the end of the match)
+		/// </summary>
+		public event EventHandler<ServerRankUpdateEventArgs> ServerRankUpdate;
+
 		#endregion
-		#endif
+#endif
 
 		/// <summary>
 		/// The mapname of the Demo. Only avaible after the header is parsed. 
@@ -576,7 +581,7 @@ namespace DemoInfo
 		{
 			DemoCommand command = (DemoCommand)BitStream.ReadByte();
 
-			BitStream.ReadInt(32); // tick number
+			IngameTick = (int)BitStream.ReadInt(32); // tick number
 			BitStream.ReadByte(); // player slot
 
 			this.CurrentTick++; // = TickNum;
@@ -1322,8 +1327,14 @@ namespace DemoInfo
 				SayText2(this, st);
 		}
 
+		internal void RaiseServerRankUpdate(ServerRankUpdateEventArgs sru)
+		{
+			if (ServerRankUpdate != null)
+				ServerRankUpdate(this, sru);
+		}
+
 		#endregion
-		#endif
+#endif
 
 		/// <summary>
 		/// Releases all resource used by the <see cref="DemoInfo.DemoParser"/> object. This must be called or evil things (memory leaks) happen. 
