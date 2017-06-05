@@ -43,6 +43,8 @@ namespace DemoInfo
 
 		public bool IsDucking { get; set; }
 
+		public bool IsInBuyZone { get; set; }
+
 		internal Entity Entity;
 
 		public bool Disconnected { get; set; }

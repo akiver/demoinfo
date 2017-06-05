@@ -342,6 +342,16 @@ namespace DemoInfo
 		public float RankChange { get; set; }
 	}
 
+	/// <summary>
+	/// Occurs when a player leave a buy zone
+	/// </summary>
+	public class PlayerLeftBuyZoneEventArgs : EventArgs
+	{
+		/// <summary>
+		/// Player who left the zone
+		/// </summary>
+		public Player Player { get; set; }
+	}
 	public class Equipment
 	{
 		internal int EntityID { get; set; }

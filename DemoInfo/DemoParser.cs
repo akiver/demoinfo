@@ -231,6 +231,11 @@ namespace DemoInfo
 		/// Occurs when the server display a player rank
 		/// </summary>
 		public event EventHandler<RankUpdateEventArgs> RankUpdate;
+
+		/// <summary>
+		/// Occurs when a player left a buy zone
+		/// </summary>
+		public event EventHandler<PlayerLeftBuyZoneEventArgs> PlayerLeftBuyZone;
 		#endregion
 
 		/// <summary>
@@ -895,6 +900,19 @@ namespace DemoInfo
 			playerEntity.FindProperty("m_unCurrentEquipmentValue").IntRecived += (sender, e) => p.CurrentEquipmentValue = e.Value;
 			playerEntity.FindProperty("m_unRoundStartEquipmentValue").IntRecived += (sender, e) => p.RoundStartEquipmentValue = e.Value;
 			playerEntity.FindProperty("m_unFreezetimeEndEquipmentValue").IntRecived += (sender, e) => p.FreezetimeEndEquipmentValue = e.Value;
+			playerEntity.FindProperty("m_bInBuyZone").IntRecived += (sender, e) =>
+			{
+				bool newValue = e.Value == 1;
+				if (p.IsInBuyZone && !newValue)
+				{
+					PlayerLeftBuyZoneEventArgs ev = new PlayerLeftBuyZoneEventArgs
+					{
+						Player = p,
+					};
+					RaisePlayerLeftBuyZone(ev);
+				}
+				p.IsInBuyZone = newValue;
+			};
 
 			//Weapon attribution
 			string weaponPrefix = "m_hMyWeapons.";
@@ -1350,6 +1368,11 @@ namespace DemoInfo
 				RankUpdate(this, args);
 		}
 
+		internal void RaisePlayerLeftBuyZone(PlayerLeftBuyZoneEventArgs args)
+		{
+			if (PlayerLeftBuyZone != null)
+				PlayerLeftBuyZone(this, args);
+		}
 		#endregion
 
 		/// <summary>
