@@ -13,6 +13,8 @@ namespace DemoInfo
 
 		public long SteamID { get; set; }
 
+		public string SteamID32 { get; set; }
+
 		public Vector Position { get; set; }
 
 		public int EntityID { get; set; }

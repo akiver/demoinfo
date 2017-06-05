@@ -564,6 +564,7 @@ namespace DemoInfo
 					Player p = Players[id];
 					p.Name = rawPlayer.Name;
 					p.SteamID = rawPlayer.XUID;
+					p.SteamID32 = rawPlayer.GUID;
 
 					p.AdditionaInformations = additionalInformations [p.EntityID];
 
