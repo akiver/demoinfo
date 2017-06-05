@@ -352,6 +352,28 @@ namespace DemoInfo
 		/// </summary>
 		public Player Player { get; set; }
 	}
+
+	/// <summary>
+	/// Occurs when a player's money changed
+	/// </summary>
+	public class PlayerMoneyChangedEventArgs : EventArgs
+	{
+		/// <summary>
+		/// Player that had money changes
+		/// </summary>
+		public Player Player { get; set; }
+
+		/// <summary>
+		/// Old account value
+		/// </summary>
+		public int OldAccount { get; set; }
+
+		/// <summary>
+		/// New account value
+		/// </summary>
+		public int NewAccount { get; set; }
+	}
+
 	public class Equipment
 	{
 		internal int EntityID { get; set; }

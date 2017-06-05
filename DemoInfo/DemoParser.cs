@@ -236,6 +236,11 @@ namespace DemoInfo
 		/// Occurs when a player left a buy zone
 		/// </summary>
 		public event EventHandler<PlayerLeftBuyZoneEventArgs> PlayerLeftBuyZone;
+
+		/// <summary>
+		/// Occurs when a player's money have changed
+		/// </summary>
+		public event EventHandler<PlayerMoneyChangedEventArgs> PlayerMoneyChanged;
 		#endregion
 
 		/// <summary>
@@ -885,7 +890,26 @@ namespace DemoInfo
 			playerEntity.FindProperty("m_bHasDefuser").IntRecived += (sender, e) => p.HasDefuseKit = e.Value == 1;
 			playerEntity.FindProperty("m_bHasHelmet").IntRecived += (sender, e) => p.HasHelmet = e.Value == 1;
 			playerEntity.FindProperty("localdata.m_Local.m_bDucking").IntRecived += (sender, e) =>  p.IsDucking = e.Value == 1;
-			playerEntity.FindProperty("m_iAccount").IntRecived += (sender, e) => p.Money = e.Value;
+			playerEntity.FindProperty("m_iAccount").IntRecived += (sender, e) =>
+			{
+				if (p.SteamID > 0)
+				{
+					int newMoney = e.Value;
+					// occured before the pick weapon event in case of a buy
+					if (p.Money != newMoney)
+					{
+						PlayerMoneyChangedEventArgs ev = new PlayerMoneyChangedEventArgs
+						{
+							Player = p,
+							OldAccount = p.Money,
+							NewAccount = newMoney
+						};
+
+						RaisePlayerMoneyChange(ev);
+					}
+				}
+				p.Money = e.Value;
+			};
 			playerEntity.FindProperty("m_angEyeAngles[1]").FloatRecived += (sender, e) => p.ViewDirectionX = e.Value;
 			playerEntity.FindProperty("m_angEyeAngles[0]").FloatRecived += (sender, e) => p.ViewDirectionY = e.Value;
 			playerEntity.FindProperty("m_flFlashDuration").FloatRecived += (sender, e) => p.FlashDuration = e.Value;
@@ -1373,6 +1397,13 @@ namespace DemoInfo
 			if (PlayerLeftBuyZone != null)
 				PlayerLeftBuyZone(this, args);
 		}
+
+		internal void RaisePlayerMoneyChange(PlayerMoneyChangedEventArgs args)
+		{
+			if (PlayerMoneyChanged != null)
+				PlayerMoneyChanged(this, args);
+		}
+
 		#endregion
 
 		/// <summary>
