@@ -50,7 +50,7 @@ namespace DemoInfo.DP.Handler
 				};
 
 				parser.RaiseRoundStart (rs);
-
+				parser.IsFreezetime = true;
 			}
 
 			if (eventDescriptor.Name == "cs_win_panel_match")
@@ -113,7 +113,10 @@ namespace DemoInfo.DP.Handler
 				parser.RaiseRoundAnnounceMatchStarted();
 
 			if (eventDescriptor.Name == "round_freeze_end")
-				parser.RaiseFreezetimeEnded ();
+			{
+				parser.IsFreezetime = false;
+				parser.RaiseFreezetimeEnded();
+			}
 
 			//if (eventDescriptor.Name != "player_footstep" && eventDescriptor.Name != "weapon_fire" && eventDescriptor.Name != "player_jump") {
 			//	Console.WriteLine (eventDescriptor.Name);

@@ -480,6 +480,11 @@ namespace DemoInfo
 		public float CurrentTime { get { return CurrentTick * TickTime; } }
 
 		/// <summary>
+		/// Is it currently freezetime? Used to detect buy events
+		/// </summary>
+		public bool IsFreezetime { get; internal set; }
+
+		/// <summary>
 		/// This contains additional informations about each player, such as Kills, Deaths, etc. 
 		/// This is networked seperately from the player, so we need to cache it somewhere else.
 		/// </summary>
