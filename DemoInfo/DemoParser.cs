@@ -241,6 +241,22 @@ namespace DemoInfo
 		/// Occurs when a player's money have changed
 		/// </summary>
 		public event EventHandler<PlayerMoneyChangedEventArgs> PlayerMoneyChanged;
+
+		/// <summary>
+		/// Occurs when a player pick a weapon (buy or not)
+		/// </summary>
+		public event EventHandler<PlayerPickWeaponEventArgs> PlayerPickWeapon;
+
+		/// <summary>
+		/// Occurs when a player drop a weapon
+		/// Drops happen when a player is killed too, check for IsAlive to know if drops are due to a kill
+		/// </summary>
+		public event EventHandler<PlayerDropWeaponEventArgs> PlayerDropWeapon;
+
+		/// <summary>
+		/// Occurs when a player buy an equipment
+		/// </summary>
+		public event EventHandler<PlayerBuyEventArgs> PlayerBuy;
 		#endregion
 
 		/// <summary>
@@ -294,12 +310,6 @@ namespace DemoInfo
 		/// A parser for DEM_STRINGTABLES-Packets
 		/// </summary>
 		StringTableParser StringTables = new StringTableParser();
-
-		/// <summary>
-		/// This maps an ServerClass to an Equipment. 
-		/// Note that this is wrong for the CZ,M4A1 and USP-S, there is an additional fix for those
-		/// </summary>
-		internal Dictionary<ServerClass, EquipmentElement> equipmentMapping = new Dictionary<ServerClass, EquipmentElement>();
 
 		internal Dictionary<int, Player> Players = new Dictionary<int, Player>();
 
@@ -592,6 +602,44 @@ namespace DemoInfo
 						bind.Player = p;
 						RaisePlayerBind(bind);
 					}
+
+					while (p.DroppedWeapons.Count > 0)
+					{
+						PlayerDropWeaponEventArgs dropEvent = new PlayerDropWeaponEventArgs
+						{
+							Player = p,
+							Weapon = p.DroppedWeapons.Dequeue(),
+						};
+						RaisePlayerDropWeapon(dropEvent);
+					}
+
+					while (p.PickedWeapons.Count > 0)
+					{
+						Equipment equipment = p.PickedWeapons.Dequeue();
+						PlayerPickWeaponEventArgs pickeEvent = new PlayerPickWeaponEventArgs
+						{
+							Player = p,
+							Weapon = equipment,
+						};
+						RaisePlayerPickWeapon(pickeEvent);
+
+						// Since item_purchase event isn't networked we use equipment picks to detect buy events based on 3 things:
+						// 1. The weapon pick happened during freezetime
+						// 2. There is no previous weapon owner (avoid drop from a friend detected has a buy)
+						// 3. It's not a knife / C4 or a default pistol (glock or USP)
+						// This logic may not be 100% perfect but it seems to be accurate
+						if (IsFreezetime && equipment.PrevOwner == null
+							&& equipment.Weapon != EquipmentElement.Knife && equipment.Weapon != EquipmentElement.Glock
+							&& equipment.Weapon != EquipmentElement.USP && equipment.Weapon != EquipmentElement.Bomb)
+						{
+							PlayerBuyEventArgs buyEvent = new PlayerBuyEventArgs
+							{
+								Player = p,
+								Weapon = equipment,
+							};
+							RaisePlayerBuyWeapon(buyEvent);
+						}
+					}
 				}
 			}
 
@@ -629,9 +677,6 @@ namespace DemoInfo
 				BitStream.BeginChunk (BitStream.ReadSignedInt (32) * 8);
 				SendTableParser.ParsePacket (BitStream);
 				BitStream.EndChunk ();
-
-				//Map the weapons in the equipmentMapping-Dictionary.
-				MapEquipment ();
 
 				//And now we have the entities, we can bind events on them. 
 				BindEntites();
@@ -891,26 +936,75 @@ namespace DemoInfo
 
 			//update some stats
 			playerEntity.FindProperty("m_iHealth").IntRecived += (sender, e) => p.HP = e.Value;
-			playerEntity.FindProperty("m_ArmorValue").IntRecived += (sender, e) => p.Armor = e.Value;
-			playerEntity.FindProperty("m_bHasDefuser").IntRecived += (sender, e) => p.HasDefuseKit = e.Value == 1;
-			playerEntity.FindProperty("m_bHasHelmet").IntRecived += (sender, e) => p.HasHelmet = e.Value == 1;
+			playerEntity.FindProperty("m_ArmorValue").IntRecived += (sender, e) =>
+			{
+				// player bought kevlar OR maybe an assaultsuilt (vesthelm)
+				// Since m_iAccount is updated first and m_bHasHelmet next, we store temporarily the value
+				// of the last item bought (on m_iAccount change) to detect if he bought just a vest (650$) or a vesthelm
+				// we raise this event only if the last item bought value is 650
+				if (IsFreezetime && p.Armor < 100 && e.Value == 100 && p.LastItemBoughtValue == 650)
+				{
+					PlayerBuyEventArgs ev = new PlayerBuyEventArgs
+					{
+						Player = p,
+						Weapon = new Equipment("item_kevlar"),
+					};
+					RaisePlayerBuyWeapon(ev);
+					p.LastItemBoughtValue = 0;
+				}
+				p.Armor = e.Value;
+			};
+			playerEntity.FindProperty("m_bHasDefuser").IntRecived += (sender, e) =>
+			{
+				bool hasDefuserNow = e.Value == 1;
+				if (IsFreezetime && !p.HasDefuseKit && hasDefuserNow)
+				{
+					// player bought a defuser
+					PlayerBuyEventArgs ev = new PlayerBuyEventArgs
+					{
+						Player = p,
+						Weapon = new Equipment("item_defuser"),
+					};
+					RaisePlayerBuyWeapon(ev);
+				}
+
+				p.HasDefuseKit = hasDefuserNow;
+			};
+			playerEntity.FindProperty("m_bHasHelmet").IntRecived += (sender, e) =>
+			{
+				bool hasHelmetNow = e.Value == 1;
+				if (IsFreezetime && !p.HasHelmet && hasHelmetNow)
+				{
+					// player bought an vesthelm (assaultsuit)
+					PlayerBuyEventArgs ev = new PlayerBuyEventArgs
+					{
+						Player = p,
+						Weapon = new Equipment("item_assaultsuit"),
+					};
+					RaisePlayerBuyWeapon(ev);
+				}
+
+				p.HasHelmet = hasHelmetNow;
+			};
 			playerEntity.FindProperty("localdata.m_Local.m_bDucking").IntRecived += (sender, e) =>  p.IsDucking = e.Value == 1;
 			playerEntity.FindProperty("m_iAccount").IntRecived += (sender, e) =>
 			{
 				if (p.SteamID > 0)
 				{
 					int newMoney = e.Value;
-					// occured before the pick weapon event in case of a buy
+					// WARN: happen before the weapon pick event in case of a buy
+					// 1. Money change detected
+					// 2. Weapon has been picked
 					if (p.Money != newMoney)
 					{
 						PlayerMoneyChangedEventArgs ev = new PlayerMoneyChangedEventArgs
 						{
 							Player = p,
 							OldAccount = p.Money,
-							NewAccount = newMoney
+							NewAccount = newMoney,
 						};
-
 						RaisePlayerMoneyChange(ev);
+						p.LastItemBoughtValue = p.Money - newMoney;
 					}
 				}
 				p.Money = e.Value;
@@ -957,25 +1051,39 @@ namespace DemoInfo
 				int iForTheMethod = i; //Because else i is passed as reference to the delegate. 
 
 				playerEntity.FindProperty(weaponPrefix + i.ToString().PadLeft(3, '0')).IntRecived += (sender, e) => {
-
+					// index = entity.id
 					int index = e.Value & INDEX_MASK;
-
 					if (index != INDEX_MASK) {
-						if(cache[iForTheMethod] != 0) //Player already has a weapon in this slot. 
+						if (cache[iForTheMethod] != 0) //Player already has a weapon in this slot. 
 						{
+							// add to the weapons dropped queue that will be clear at the end of the tick
+							p.DroppedWeapons.Enqueue(p.rawWeapons[cache[iForTheMethod]]);
+
+							// remove the player's weapon slot
 							p.rawWeapons.Remove(cache[iForTheMethod]);
 							cache[iForTheMethod] = 0;
 						}
+
+						// add the new weapon to player's slot
 						cache[iForTheMethod] = index;
-
-						AttributeWeapon(index, p);
-					} else {
-						if (cache[iForTheMethod] != 0 && p.rawWeapons.ContainsKey(cache[iForTheMethod]))
+						Equipment weapon = weapons[index];
+						weapon.Owner = p;
+						p.rawWeapons[index] = weapon;
+						p.PickedWeapons.Enqueue(weapon);
+					}
+					else {
+						if (cache[iForTheMethod] != 0)
 						{
-							p.rawWeapons[cache[iForTheMethod]].Owner = null;
-						}
-						p.rawWeapons.Remove(cache[iForTheMethod]);
+							p.DroppedWeapons.Enqueue(p.rawWeapons[cache[iForTheMethod]]);
 
+							if (p.rawWeapons.ContainsKey(cache[iForTheMethod]))
+							{
+								// is it necessary as we remove element from dict just after?
+								p.rawWeapons[cache[iForTheMethod]].Owner = null;
+							}
+						}
+
+						p.rawWeapons.Remove(cache[iForTheMethod]);
 						cache[iForTheMethod] = 0;
 					}
 				};
@@ -994,45 +1102,6 @@ namespace DemoInfo
 
 		}
 
-		private void MapEquipment()
-		{				
-			for (int i = 0; i < SendTableParser.ServerClasses.Count; i++) {
-				var sc = SendTableParser.ServerClasses[i];
-
-				if (sc.BaseClasses.Count > 6 && sc.BaseClasses [6].Name == "CWeaponCSBase") { 
-					//It is a "weapon" (Gun, C4, ... (...is the cz still a "weapon" after the nerf? (fml, it was buffed again)))
-					if (sc.BaseClasses.Count > 7) {
-						if (sc.BaseClasses [7].Name == "CWeaponCSBaseGun") {
-							//it is a ratatatata-weapon.
-							var s = sc.DTName.Substring (9).ToLower ();
-							equipmentMapping.Add (sc, Equipment.MapEquipment (s));
-						} else if (sc.BaseClasses [7].Name == "CBaseCSGrenade") {
-							//"boom"-weapon. 
-							equipmentMapping.Add (sc, Equipment.MapEquipment (sc.DTName.Substring (3).ToLower ()));
-						} 
-					} else if (sc.Name == "CC4") {
-						//Bomb is neither "ratatata" nor "boom", its "booooooom".
-						equipmentMapping.Add (sc, EquipmentElement.Bomb);
-					} else if (sc.Name == "CKnife" || (sc.BaseClasses.Count > 6 && sc.BaseClasses [6].Name == "CKnife")) {
-						//tsching weapon
-						equipmentMapping.Add (sc, EquipmentElement.Knife);
-					} else if (sc.Name == "CWeaponNOVA" || sc.Name == "CWeaponSawedoff" || sc.Name == "CWeaponXM1014") {
-						equipmentMapping.Add (sc, Equipment.MapEquipment (sc.Name.Substring (7).ToLower()));
-					}
-				}
-			}
-
-		}
-
-		private bool AttributeWeapon(int weaponEntityIndex, Player p)
-		{
-			var weapon = weapons[weaponEntityIndex];
-			weapon.Owner = p;
-			p.rawWeapons [weaponEntityIndex] = weapon;
-
-			return true;
-		}
-
 		void HandleWeapons ()
 		{
 			for (int i = 0; i < MAX_ENTITIES; i++) {
@@ -1046,9 +1115,8 @@ namespace DemoInfo
 
 		void HandleWeapon (object sender, EntityCreatedEventArgs e)
 		{
-			var equipment = weapons [e.Entity.ID];
+			Equipment equipment = weapons[e.Entity.ID];
 			equipment.EntityID = e.Entity.ID;
-			equipment.Weapon = equipmentMapping [e.Class];
 			equipment.AmmoInMagazine = -1;
 
 			e.Entity.FindProperty("m_iClip1").IntRecived += (asdasd, ammoUpdate) => {
@@ -1059,42 +1127,34 @@ namespace DemoInfo
 				equipment.AmmoType = typeUpdate.Value;
 			};
 
-			if (equipment.Weapon == EquipmentElement.P2000) {
-				e.Entity.FindProperty("m_nModelIndex").IntRecived += (sender2, e2) => {
-					equipment.OriginalString = modelprecache[e2.Value];
-					if (modelprecache[e2.Value].Contains("_pist_223"))
-						equipment.Weapon = EquipmentElement.USP; //BAM
-					else if(modelprecache[e2.Value].Contains("_pist_hkp2000"))
-						equipment.Weapon = EquipmentElement.P2000;
-					else 
-						throw new InvalidDataException("Unknown weapon model");
-				};
-			}
+			e.Entity.FindProperty("m_AttributeManager.m_Item.m_iItemDefinitionIndex").IntRecived += (sender2, e2) =>
+			{
+				// We use the item index definition to detect each weapons except for:
+				// kevlar, helmet and defuser (detected from item names, see Equipment#MapEquipement())
+				// This indexes are defined in the game file scripts/items/items_game.txt
+				EquipmentMapping map = Equipment.Equipments.FirstOrDefault(eq => eq.ItemIndex == e2.Value);
+				if (map.ItemIndex == 0)
+				{
+					Trace.WriteLine("Unknown weapon index " + e2.Value + " class " + e.Class + " " + equipment.Weapon);
+				}
+				else
+				{
+					equipment.OriginalString = map.OriginalName;
+					equipment.Weapon = map.Element;
+				}
+			};
 
-			if (equipment.Weapon == EquipmentElement.M4A4) {
-				e.Entity.FindProperty("m_nModelIndex").IntRecived += (sender2, e2) => {
-					equipment.OriginalString = modelprecache[e2.Value];
-					if (modelprecache[e2.Value].Contains("_rif_m4a1_s"))
-						equipment.Weapon = EquipmentElement.M4A1;  //BAM
-						// if it's not an M4A1-S, check if it's an M4A4
-					else if(modelprecache[e2.Value].Contains("_rif_m4a1"))
-						equipment.Weapon = EquipmentElement.M4A4;
-					else 
-						throw new InvalidDataException("Unknown weapon model");
-				};
-			}
+			e.Entity.FindProperty("m_hOwner").IntRecived += (asdasd, e2) =>
+			{
+				Player owner = PlayingParticipants.FirstOrDefault(p => p.EntityID == (e2.Value & INDEX_MASK));
+				equipment.Owner = owner;
+			};
 
-			if (equipment.Weapon == EquipmentElement.P250) {
-				e.Entity.FindProperty("m_nModelIndex").IntRecived += (sender2, e2) => {
-					equipment.OriginalString = modelprecache[e2.Value];
-					if (modelprecache[e2.Value].Contains("_pist_cz_75"))
-						equipment.Weapon = EquipmentElement.CZ;  //BAM
-					else if(modelprecache[e2.Value].Contains("_pist_p250"))
-						equipment.Weapon = EquipmentElement.P250;
-					else 
-						throw new InvalidDataException("Unknown weapon model");
-				};
-			}
+			e.Entity.FindProperty("m_hPrevOwner").IntRecived += (asdasd, prev) =>
+			{
+				Player prevOwner = PlayingParticipants.FirstOrDefault(p => p.EntityID == (prev.Value & INDEX_MASK));
+				equipment.PrevOwner = prevOwner;
+			};
 		}
 
 		internal List<BoundingBoxInformation> triggers = new List<BoundingBoxInformation>();
@@ -1409,6 +1469,24 @@ namespace DemoInfo
 				PlayerMoneyChanged(this, args);
 		}
 
+		internal void RaisePlayerPickWeapon(PlayerPickWeaponEventArgs args)
+		{
+			if (PlayerPickWeapon != null)
+				PlayerPickWeapon(this, args);
+		}
+
+		internal void RaisePlayerDropWeapon(PlayerDropWeaponEventArgs args)
+		{
+			if (PlayerDropWeapon != null)
+				PlayerDropWeapon(this, args);
+		}
+
+		internal void RaisePlayerBuyWeapon(PlayerBuyEventArgs args)
+		{
+			if (PlayerBuy != null)
+				PlayerBuy(this, args);
+		}
+
 		#endregion
 
 		/// <summary>
@@ -1456,6 +1534,9 @@ namespace DemoInfo
 			this.SmokeNadeEnded = null;
 			this.SmokeNadeStarted = null;
 			this.WeaponFired = null;
+			this.PlayerLeftBuyZone = null;
+			this.PlayerMoneyChanged = null;
+			this.PlayerBuy = null;
 
 			Players.Clear ();
 		}

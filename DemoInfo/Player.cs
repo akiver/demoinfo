@@ -41,6 +41,11 @@ namespace DemoInfo
 
 		public int RoundStartEquipmentValue { get; set; }
 
+		/// <summary>
+		/// Used to avoid triggering player buy kevlar event when he actually bought an assaultsuit
+		/// </summary>
+		public int LastItemBoughtValue { get; set; }
+
 		public bool IsDucking { get; set; }
 
 		public bool IsInBuyZone { get; set; }
@@ -62,6 +67,17 @@ namespace DemoInfo
 
 		internal Dictionary<int, Equipment> rawWeapons = new Dictionary<int, Equipment>();
 		public IEnumerable<Equipment> Weapons { get { return rawWeapons.Values; } }
+
+		/// <summary>
+		/// Because data update are inconsistent, we track player's weapons dropped
+		/// during each tick and raise events at the end of it.
+		/// </summary>
+		internal Queue<Equipment> DroppedWeapons = new Queue<Equipment>();
+
+		/// <summary>
+		/// Same as DropppedWeapons but for weapons picked during the tick.
+		/// </summary>
+		internal Queue<Equipment> PickedWeapons = new Queue<Equipment>();
 
 		public bool IsAlive {
 			get { return HP > 0; }
@@ -120,6 +136,11 @@ namespace DemoInfo
 
 			if (Velocity != null)
 				me.Velocity = Velocity.Copy();
+
+			me.ActiveWeaponID = ActiveWeaponID;
+			me.rawWeapons = new Dictionary<int, Equipment>(rawWeapons);
+			me.PickedWeapons = new Queue<Equipment>(PickedWeapons);
+			me.DroppedWeapons = new Queue<Equipment>(DroppedWeapons);
 
 			return me;
 		}

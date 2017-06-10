@@ -129,10 +129,15 @@ namespace DemoInfo.DP.Handler
 
 				WeaponFiredEventArgs fire = new WeaponFiredEventArgs ();
 				fire.Shooter = parser.Players.ContainsKey ((int)data ["userid"]) ? parser.Players [(int)data ["userid"]] : null;
-				fire.Weapon = new Equipment ((string)data ["weapon"]);
 
-				if (fire.Shooter != null && fire.Weapon.Class != EquipmentClass.Grenade) {
+				if (fire.Shooter != null && fire.Shooter.ActiveWeapon != null)
+				{
 					fire.Weapon = fire.Shooter.ActiveWeapon;
+				}
+				else
+				{
+					// should not happen but we never know
+					fire.Weapon = new Equipment((string)data["weapon"]);
 				}
 
 				parser.RaiseWeaponFired(fire);
@@ -146,18 +151,17 @@ namespace DemoInfo.DP.Handler
 				kill.Killer = parser.Players.ContainsKey((int)data["attacker"]) ? parser.Players[(int)data["attacker"]] : null;
 				kill.Assister = parser.Players.ContainsKey((int)data["assister"]) ? parser.Players[(int)data["assister"]] : null;
 				kill.Headshot = (bool)data["headshot"];
-				kill.Weapon = new Equipment((string)data["weapon"], (string)data["weapon_itemid"]);
 
-				if (kill.Killer != null && kill.Weapon.Class != EquipmentClass.Grenade
-						&& kill.Weapon.Weapon != EquipmentElement.Revolver
-						&& kill.Killer.Weapons.Any() && kill.Weapon.Weapon != EquipmentElement.World) {
-					#if DEBUG
-					if(kill.Weapon.Weapon != kill.Killer.ActiveWeapon.Weapon)
-						throw new InvalidDataException();
-					#endif
+				if (kill.Killer != null && kill.Killer.ActiveWeapon != null)
+				{
 					kill.Weapon = kill.Killer.ActiveWeapon;
+					kill.Weapon.SkinID = (string)data["weapon_itemid"];
 				}
-
+				else
+				{
+					// should not happen but we never know
+					kill.Weapon = new Equipment((string) data["weapon"], (string)data["weapon_itemid"]);
+				}
 
 				kill.PenetratedObjects = (int)data["penetrated"];
 
@@ -175,10 +179,14 @@ namespace DemoInfo.DP.Handler
 				hurt.ArmorDamage = (int)data ["dmg_armor"];
 				hurt.Hitgroup = (Hitgroup)((int)data ["hitgroup"]);
 
-				hurt.Weapon = new Equipment ((string)data ["weapon"], "");
-
-				if (hurt.Attacker != null && hurt.Weapon.Class != EquipmentClass.Grenade && hurt.Attacker.Weapons.Any ()) {
+				if (hurt.Attacker != null && hurt.Attacker.ActiveWeapon != null)
+				{
 					hurt.Weapon = hurt.Attacker.ActiveWeapon;
+				}
+				else
+				{
+					// should not happen but we never know
+					hurt.Weapon = new Equipment((string)data["weapon"]);
 				}
 
 				parser.RaisePlayerHurt (hurt);
