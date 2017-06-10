@@ -195,8 +195,20 @@ namespace DemoInfo.DP.Handler
 				#region Nades
 			case "player_blind":
 				data = MapData(eventDescriptor, rawEvent);
-				if (parser.Players.ContainsKey((int)data["userid"]))
-					blindPlayers.Add(parser.Players[(int)data["userid"]]);
+				if (parser.Players.ContainsKey((int) data["userid"]))
+				{
+					Player p = parser.Players[(int) data["userid"]];
+					blindPlayers.Add(p);
+
+					Player attacker = parser.Players[(int)data["attacker"]];
+					PlayerBlindEventArgs ev = new PlayerBlindEventArgs
+					{
+						Player = p,
+						Duration = (float)data["blind_duration"],
+						Attacker = attacker,
+					};
+					parser.RaisePlayerBlind(ev);
+				}
 				break;
 			case "flashbang_detonate":
 				var args = FillNadeEvent<FlashEventArgs>(MapData(eventDescriptor, rawEvent), parser);

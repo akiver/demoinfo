@@ -205,6 +205,10 @@ namespace DemoInfo
 		/// </summary>
 		public event EventHandler<PlayerHurtEventArgs> PlayerHurt;
 
+		/// <summary>
+		/// Occurs when a player is blind
+		/// </summary>
+		public event EventHandler<PlayerBlindEventArgs> PlayerBlind;
 
 		/// <summary>
 		/// Occurs when the player object is first updated to reference all the necessary information
@@ -1386,6 +1390,12 @@ namespace DemoInfo
 
 			if (NadeReachedTarget != null)
 				NadeReachedTarget(this, args);
+		}
+
+		internal void RaisePlayerBlind(PlayerBlindEventArgs args)
+		{
+			if (PlayerBlind != null)
+				PlayerBlind(this, args);
 		}
 
 		internal void RaiseGrenadeExploded(GrenadeEventArgs args)

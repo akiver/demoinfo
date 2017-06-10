@@ -188,6 +188,24 @@ namespace DemoInfo
 		public bool HasKit { get; set; }
 	}
 
+	public class PlayerBlindEventArgs : EventArgs
+	{
+		/// <summary>
+		/// The blinded player
+		/// </summary>
+		public Player Player { get; set; }
+
+		/// <summary>
+		/// Flash duration
+		/// </summary>
+		public float Duration { get; set; }
+
+		/// <summary>
+		/// Player who threw the flash
+		/// </summary>
+		public Player Attacker { get; set; }
+	}
+
 	public class PlayerHurtEventArgs : EventArgs
 	{
 		/// <summary>
