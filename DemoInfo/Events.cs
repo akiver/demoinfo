@@ -442,6 +442,27 @@ namespace DemoInfo
 		public Equipment Weapon { get; set; }
 	}
 
+	/// <summary>
+	/// Occurs when a ConVar has changed
+	/// </summary>
+	public class ConVarChangeEventArgs : EventArgs
+	{
+		/// <summary>
+		/// ConVar's name
+		/// </summary>
+		public string Name { get; set; }
+
+		/// <summary>
+		/// ConVar value
+		/// </summary>
+		public string Value { get; set; }
+
+		/// <summary>
+		/// Don't know what's that
+		/// </summary>
+		public UInt32 DictionaryValue { get; set; }
+	}
+
 	public class Equipment
 	{
 		internal int EntityID { get; set; }

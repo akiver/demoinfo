@@ -261,6 +261,11 @@ namespace DemoInfo
 		/// Occurs when a player buy an equipment
 		/// </summary>
 		public event EventHandler<PlayerBuyEventArgs> PlayerBuy;
+
+		/// <summary>
+		/// Occurs when a ConVar has changed
+		/// </summary>
+		public event EventHandler<ConVarChangeEventArgs> ConVarChange;
 		#endregion
 
 		/// <summary>
@@ -1495,6 +1500,12 @@ namespace DemoInfo
 		{
 			if (PlayerBuy != null)
 				PlayerBuy(this, args);
+		}
+
+		internal void RaiseConVarChange(ConVarChangeEventArgs args)
+		{
+			if (ConVarChange != null)
+				ConVarChange(this, args);
 		}
 
 		#endregion
