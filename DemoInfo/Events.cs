@@ -271,6 +271,8 @@ namespace DemoInfo
 	public class PlayerDisconnectEventArgs : EventArgs
 	{
 		public Player Player {get; set; }
+
+		public string Reason { get; set; }
 	}
 
 	/// <summary>

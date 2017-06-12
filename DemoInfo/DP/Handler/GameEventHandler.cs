@@ -260,7 +260,10 @@ namespace DemoInfo.DP.Handler
 			case "player_disconnect":
 				data = MapData(eventDescriptor, rawEvent);
 
-				PlayerDisconnectEventArgs disconnect = new PlayerDisconnectEventArgs();
+				PlayerDisconnectEventArgs disconnect = new PlayerDisconnectEventArgs
+				{
+					Reason = (string)data["reason"],
+				};
 				disconnect.Player = parser.Players.ContainsKey((int)data["userid"]) ? parser.Players[(int)data["userid"]] : null;
 				parser.RaisePlayerDisconnect(disconnect);
 
