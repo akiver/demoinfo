@@ -558,6 +558,7 @@ namespace DemoInfo
 						weapon = EquipmentElement.DefuseKit;
 						break;
 					case "weapon_world":
+					case "weapon_worldspawn":
 						weapon = EquipmentElement.World;
 						break;
 					case "weapon_inferno":
