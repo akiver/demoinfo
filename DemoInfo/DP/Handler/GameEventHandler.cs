@@ -50,7 +50,6 @@ namespace DemoInfo.DP.Handler
 				};
 
 				parser.RaiseRoundStart (rs);
-				parser.IsFreezetime = true;
 			}
 
 			if (eventDescriptor.Name == "cs_win_panel_match")
@@ -114,7 +113,6 @@ namespace DemoInfo.DP.Handler
 
 			if (eventDescriptor.Name == "round_freeze_end")
 			{
-				parser.IsFreezetime = false;
 				parser.RaiseFreezetimeEnded();
 			}
 

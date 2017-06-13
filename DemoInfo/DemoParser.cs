@@ -499,11 +499,6 @@ namespace DemoInfo
 		public float CurrentTime { get { return CurrentTick * TickTime; } }
 
 		/// <summary>
-		/// Is it currently freezetime? Used to detect buy events
-		/// </summary>
-		public bool IsFreezetime { get; internal set; }
-
-		/// <summary>
 		/// This contains additional informations about each player, such as Kills, Deaths, etc. 
 		/// This is networked seperately from the player, so we need to cache it somewhere else.
 		/// </summary>
@@ -633,11 +628,11 @@ namespace DemoInfo
 						RaisePlayerPickWeapon(pickeEvent);
 
 						// Since item_purchase event isn't networked we use equipment picks to detect buy events based on 3 things:
-						// 1. The weapon pick happened during freezetime
+						// 1. The weapon pick happened in the buy zone
 						// 2. There is no previous weapon owner (avoid drop from a friend detected has a buy)
 						// 3. It's not a knife / C4 or a default pistol (glock or USP)
 						// This logic may not be 100% perfect but it seems to be accurate
-						if (IsFreezetime && equipment.PrevOwner == null
+						if (p.IsInBuyZone && equipment.PrevOwner == null
 							&& equipment.Weapon != EquipmentElement.Knife && equipment.Weapon != EquipmentElement.Glock
 							&& equipment.Weapon != EquipmentElement.USP && equipment.Weapon != EquipmentElement.Bomb)
 						{
@@ -951,7 +946,7 @@ namespace DemoInfo
 				// Since m_iAccount is updated first and m_bHasHelmet next, we store temporarily the value
 				// of the last item bought (on m_iAccount change) to detect if he bought just a vest (650$) or a vesthelm
 				// we raise this event only if the last item bought value is 650
-				if (IsFreezetime && p.Armor < 100 && e.Value == 100 && p.LastItemBoughtValue == 650)
+				if (p.IsInBuyZone && p.Armor < 100 && e.Value == 100 && p.LastItemBoughtValue == 650)
 				{
 					PlayerBuyEventArgs ev = new PlayerBuyEventArgs
 					{
@@ -966,7 +961,7 @@ namespace DemoInfo
 			playerEntity.FindProperty("m_bHasDefuser").IntRecived += (sender, e) =>
 			{
 				bool hasDefuserNow = e.Value == 1;
-				if (IsFreezetime && !p.HasDefuseKit && hasDefuserNow)
+				if (p.IsInBuyZone && !p.HasDefuseKit && hasDefuserNow)
 				{
 					// player bought a defuser
 					PlayerBuyEventArgs ev = new PlayerBuyEventArgs
@@ -982,7 +977,7 @@ namespace DemoInfo
 			playerEntity.FindProperty("m_bHasHelmet").IntRecived += (sender, e) =>
 			{
 				bool hasHelmetNow = e.Value == 1;
-				if (IsFreezetime && !p.HasHelmet && hasHelmetNow)
+				if (p.IsInBuyZone && !p.HasHelmet && hasHelmetNow)
 				{
 					// player bought an vesthelm (assaultsuit)
 					PlayerBuyEventArgs ev = new PlayerBuyEventArgs
@@ -998,23 +993,20 @@ namespace DemoInfo
 			playerEntity.FindProperty("localdata.m_Local.m_bDucking").IntRecived += (sender, e) =>  p.IsDucking = e.Value == 1;
 			playerEntity.FindProperty("m_iAccount").IntRecived += (sender, e) =>
 			{
-				if (p.SteamID > 0)
+				int newMoney = e.Value;
+				// WARN: happen before the weapon pick event in case of a buy
+				// 1. Money change detected
+				// 2. Weapon has been picked
+				if (p.SteamID != -1 && p.Money != newMoney)
 				{
-					int newMoney = e.Value;
-					// WARN: happen before the weapon pick event in case of a buy
-					// 1. Money change detected
-					// 2. Weapon has been picked
-					if (p.Money != newMoney)
+					PlayerMoneyChangedEventArgs ev = new PlayerMoneyChangedEventArgs
 					{
-						PlayerMoneyChangedEventArgs ev = new PlayerMoneyChangedEventArgs
-						{
-							Player = p,
-							OldAccount = p.Money,
-							NewAccount = newMoney,
-						};
-						RaisePlayerMoneyChange(ev);
-						p.LastItemBoughtValue = p.Money - newMoney;
-					}
+						Player = p,
+						OldAccount = p.Money,
+						NewAccount = newMoney,
+					};
+					RaisePlayerMoneyChange(ev);
+					p.LastItemBoughtValue = p.Money - newMoney;
 				}
 				p.Money = e.Value;
 			};
