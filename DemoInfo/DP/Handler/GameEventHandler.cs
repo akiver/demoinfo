@@ -204,14 +204,17 @@ namespace DemoInfo.DP.Handler
 					Player p = parser.Players[(int) data["userid"]];
 					blindPlayers.Add(p);
 
-					Player attacker = parser.Players[(int)data["attacker"]];
-					PlayerBlindEventArgs ev = new PlayerBlindEventArgs
+					if (data.ContainsKey("attacker"))
 					{
-						Player = p,
-						Duration = (float)data["blind_duration"],
-						Attacker = attacker,
-					};
-					parser.RaisePlayerBlind(ev);
+						Player attacker = parser.Players[(int)data["attacker"]];
+						PlayerBlindEventArgs ev = new PlayerBlindEventArgs
+						{
+							Player = p,
+							Duration = (float)data["blind_duration"],
+							Attacker = attacker,
+						};
+						parser.RaisePlayerBlind(ev);
+					}
 				}
 				break;
 			case "flashbang_detonate":
