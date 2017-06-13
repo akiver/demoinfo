@@ -155,16 +155,16 @@ namespace DemoInfo.DP.Handler
 				kill.Killer = parser.Players.ContainsKey((int)data["attacker"]) ? parser.Players[(int)data["attacker"]] : null;
 				kill.Assister = parser.Players.ContainsKey((int)data["assister"]) ? parser.Players[(int)data["assister"]] : null;
 				kill.Headshot = (bool)data["headshot"];
+				kill.Weapon = new Equipment((string)data["weapon"], (string)data["weapon_itemid"]);
 
 				if (kill.Killer != null && kill.Killer.ActiveWeapon != null)
 				{
-					kill.Weapon = kill.Killer.ActiveWeapon;
-					kill.Weapon.SkinID = (string)data["weapon_itemid"];
-				}
-				else
-				{
-					// should not happen but we never know
-					kill.Weapon = new Equipment((string) data["weapon"], (string)data["weapon_itemid"]);
+					// in case of grenade kills, killer's active weapon is not his grenade at this state
+					if (kill.Weapon == null || (kill.Weapon != null && kill.Weapon.Class != EquipmentClass.Grenade))
+					{
+						kill.Weapon = kill.Killer.ActiveWeapon;
+						kill.Weapon.SkinID = (string)data["weapon_itemid"];
+					}
 				}
 
 				kill.PenetratedObjects = (int)data["penetrated"];
@@ -182,15 +182,15 @@ namespace DemoInfo.DP.Handler
 				hurt.HealthDamage = (int)data ["dmg_health"];
 				hurt.ArmorDamage = (int)data ["dmg_armor"];
 				hurt.Hitgroup = (Hitgroup)((int)data ["hitgroup"]);
+				hurt.Weapon = new Equipment((string)data["weapon"]);
 
 				if (hurt.Attacker != null && hurt.Attacker.ActiveWeapon != null)
 				{
-					hurt.Weapon = hurt.Attacker.ActiveWeapon;
-				}
-				else
-				{
-					// should not happen but we never know
-					hurt.Weapon = new Equipment((string)data["weapon"]);
+					// in case of grenade attacks, attacker's active weapon is not his grenade at this state
+					if (hurt.Weapon == null || (hurt.Weapon != null && hurt.Weapon.Class != EquipmentClass.Grenade))
+					{
+						hurt.Weapon = hurt.Attacker.ActiveWeapon;
+					}
 				}
 
 				parser.RaisePlayerHurt (hurt);
