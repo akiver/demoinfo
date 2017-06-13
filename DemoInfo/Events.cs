@@ -463,6 +463,27 @@ namespace DemoInfo
 		public UInt32 DictionaryValue { get; set; }
 	}
 
+	/// <summary>
+	/// Occurs when a team's score has changed
+	/// </summary>
+	public class TeamScoreChangeEventArgs : EventArgs
+	{
+		/// <summary>
+		/// Team which its score changed
+		/// </summary>
+		public Team Team { get; set; }
+
+		/// <summary>
+		/// Old score
+		/// </summary>
+		public int OldScore { get; set; }
+
+		/// <summary>
+		/// New Score
+		/// </summary>
+		public int NewScore { get; set; }
+	}
+
 	public class Equipment
 	{
 		internal int EntityID { get; set; }

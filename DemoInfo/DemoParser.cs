@@ -266,6 +266,11 @@ namespace DemoInfo
 		/// Occurs when a ConVar has changed
 		/// </summary>
 		public event EventHandler<ConVarChangeEventArgs> ConVarChange;
+
+		/// <summary>
+		/// Occurs when a team's score change
+		/// </summary>
+		public event EventHandler<TeamScoreChangeEventArgs> TeamScoreChange;
 		#endregion
 
 		/// <summary>
@@ -795,8 +800,20 @@ namespace DemoInfo
 					{
 						CTScore = score;
 						CTClanName = teamName;
-						e.Entity.FindProperty("m_scoreTotal").IntRecived += (xx, update) => { 
-							CTScore = update.Value;
+						e.Entity.FindProperty("m_scoreTotal").IntRecived += (xx, update) => {
+							int newScore = update.Value;
+							int oldScore = CTScore;
+							CTScore = newScore;
+							if (oldScore != newScore)
+							{
+								TeamScoreChangeEventArgs ev = new TeamScoreChangeEventArgs
+								{
+									Team = Team.CounterTerrorist,
+									OldScore = oldScore,
+									NewScore = newScore,
+								};
+								RaiseTeamScoreChange(ev);
+							}
 						};
 
 						if(teamID != -1)
@@ -811,8 +828,21 @@ namespace DemoInfo
 					{
 						TScore = score;
 						TClanName = teamName;
-						e.Entity.FindProperty("m_scoreTotal").IntRecived += (xx, update) => { 
-							TScore = update.Value;
+						e.Entity.FindProperty("m_scoreTotal").IntRecived += (xx, update) =>
+						{
+							int newScore = update.Value;
+							int oldScore = TScore;
+							TScore = newScore;
+							if (oldScore != newScore)
+							{
+								TeamScoreChangeEventArgs ev = new TeamScoreChangeEventArgs
+								{
+									Team = Team.Terrorist,
+									OldScore = oldScore,
+									NewScore = newScore,
+								};
+								RaiseTeamScoreChange(ev);
+							}
 						};
 
 						if(teamID != -1)
@@ -1510,6 +1540,12 @@ namespace DemoInfo
 		{
 			if (ConVarChange != null)
 				ConVarChange(this, args);
+		}
+
+		internal void RaiseTeamScoreChange(TeamScoreChangeEventArgs args)
+		{
+			if (TeamScoreChange != null)
+				TeamScoreChange(this, args);
 		}
 
 		#endregion
