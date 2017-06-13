@@ -505,6 +505,18 @@ namespace DemoInfo
 		private AdditionalPlayerInformation[] additionalInformations = new AdditionalPlayerInformation[MAXPLAYERS];
 
 		/// <summary>
+		/// Used to detect who thrown molo / inc (it's not networked)
+		/// This queue contains userid of players who thrown a molo / inc
+		/// </summary>
+		public readonly Queue<int> LastPlayerIdsThrownFire = new Queue<int>();
+
+		/// <summary>
+		/// Used to detect who thrown molo / inc (it's not networked)
+		/// This queue contains userid of players who thrown a molo / inc that have started burning
+		/// </summary>
+		public readonly Queue<int> LastPlayerIdsStartFire = new Queue<int>();
+
+		/// <summary>
 		/// Initializes a new DemoParser. Right point if you want to start analyzing demos. 
 		/// Hint: ParseHeader() is propably what you want to look into next. 
 		/// </summary>
